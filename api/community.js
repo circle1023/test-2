@@ -1,5 +1,5 @@
 import { send,errorResponse,AppError } from '../lib/http.js';
-import { actor,communityReady,requireCommunity,communityBody,displayName,uuid,readShareProof,db } from '../lib/community.js';
+import { actor,communityIssues,communityReady,requireCommunity,communityBody,displayName,uuid,readShareProof,db } from '../lib/community.js';
 const reviewColumns='id,author_name,evaluation,created_at,owner_id,average_rating,rating_count,comment_count';
 function pageNumber(raw){const n=Number(raw||0);if(!Number.isInteger(n)||n<0||n>10000)throw new AppError(400,'PAGE','잘못된 페이지입니다.');return n;}
 function publicReview(row,owner){const {owner_id,...data}=row;return {...data,is_mine:owner_id===owner};}
@@ -7,7 +7,7 @@ export default async function handler(req,res){
   try{
     const url=new URL(req.url,'http://localhost');
     if(req.method==='GET'){
-      if(!communityReady())return send(res,200,{configured:false,reviews:[],hasMore:false});
+      if(!communityReady())return send(res,200,{configured:false,configurationIssues:communityIssues(),reviews:[],hasMore:false});
       const owner=actor(req,res,false);const id=url.searchParams.get('id');
       if(id){uuid(id);const rows=await db('review_feed?'+new URLSearchParams({select:reviewColumns,id:'eq.'+id}));if(!rows.length)throw new AppError(404,'NOT_FOUND','게시물이 삭제되었거나 존재하지 않습니다.');
         const page=pageNumber(url.searchParams.get('page'));const feedback=await db('review_feedback?'+new URLSearchParams({select:'id,author_name,rating,comment,created_at,updated_at,owner_id',review_id:'eq.'+id,order:'created_at.desc,id.desc',limit:'21',offset:String(page*20)}));

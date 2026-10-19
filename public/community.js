@@ -12,11 +12,11 @@
   }
   window.reviewCommunity={
     clear(){proof=null;el('share-preview').replaceChildren();el('share-consent').checked=false;el('publish-review').disabled=true;say('share-status','');},
-    completed(data){proof=data.shareProof;el('share-preview').innerHTML=evaluationHTML(data.result.evaluation);el('share-consent').checked=false;el('publish-review').disabled=!proof;say('share-status',proof?'공개할 평가 내용을 확인한 뒤 이름을 입력하고 저장하세요.':'현재 공개 저장을 사용할 수 없습니다. 게시판 설정이 완료된 뒤 다시 분석해 주세요.');}
+    completed(data){proof=data.shareProof;el('share-preview').innerHTML=evaluationHTML(data.result.evaluation);el('share-consent').checked=false;el('publish-review').disabled=!proof;say('share-status',proof?'공개할 평가 내용을 확인한 뒤 이름을 입력하고 저장하세요.':(data.shareError||'현재 결과에 저장 권한이 없습니다. 새로고침 후 다시 분석해 주세요.'));}
   };
   async function loadList(){
     const version=++listRequest;try{const data=await request({page});if(version!==listRequest)return;configured=data.configured;
-      if(!configured){el('review-list').replaceChildren();say('board-status','공개 평가 게시판을 준비 중입니다.');el('board-next').disabled=true;el('board-prev').disabled=true;return;}
+      if(!configured){el('review-list').replaceChildren();say('board-status',data.configurationIssues?.length?'서버 설정 확인: '+data.configurationIssues.join(' / ')+' — Vercel Production 환경에 등록한 뒤 재배포하세요.':'공개 평가 게시판을 준비 중입니다.',true);el('board-next').disabled=true;el('board-prev').disabled=true;return;}
       say('board-status',data.reviews.length?'이름은 사용자가 직접 입력한 표시 이름입니다.':'아직 공개된 평가가 없습니다. 첫 평가를 공유해 보세요.');
       el('review-list').innerHTML=data.reviews.map(r=>`<button type="button" class="review-card" data-review="${esc(r.id)}"><span class="eyebrow">${r.is_mine?'MY EVALUATION':'PUBLIC EVALUATION'}</span><h3>${esc(r.author_name)}님의 AI 평가</h3><div class="card-score">${esc(r.evaluation.score)}<span> / 100</span></div><p>${esc(r.evaluation.overview.slice(0,160))}${r.evaluation.overview.length>160?'…':''}</p><div class="review-meta"><span>★ ${r.average_rating===null?'아직 없음':esc(r.average_rating)} · ${esc(r.rating_count)}명</span><span>댓글 ${esc(r.comment_count)}</span></div><time>${esc(date(r.created_at))}</time></button>`).join('');
       el('board-page').textContent=String(page+1);el('board-prev').disabled=page===0;el('board-next').disabled=!data.hasMore;

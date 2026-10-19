@@ -49,3 +49,15 @@ test('unconfigured board degrades gracefully and cross-site writes are blocked',
   const res=await invoke({action:'feedback'},{headers:{origin:'https://evil.example'}});assert.equal(res.statusCode,403);
   delete process.env.SUPABASE_SECRET_KEY;assert.equal((await invoke(null,{method:'GET'})).body.configured,false);assert.equal((await invoke({action:'publish'})).statusCode,503);
 });
+
+test('configuration diagnostics identify missing or wrong values without revealing secrets',async t=>{
+  setup(t);
+  process.env.SUPABASE_SECRET_KEY='sb_publishable_NOT_A_SERVER_KEY';
+  process.env.SESSION_SECRET='short-secret';
+  const res=await invoke(null,{method:'GET'});
+  assert.equal(res.body.configured,false);
+  assert(res.body.configurationIssues.some(x=>x.includes('SUPABASE_SECRET_KEY')));
+  assert(res.body.configurationIssues.some(x=>x.includes('32')));
+  assert(!JSON.stringify(res.body).includes('NOT_A_SERVER_KEY'));
+  assert(!JSON.stringify(res.body).includes('short-secret'));
+});
