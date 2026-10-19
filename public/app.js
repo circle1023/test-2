@@ -13,7 +13,7 @@ function choose(file){
   const ext=file.name.split('.').pop().toLowerCase();if(!['pdf','docx','txt','md'].includes(ext)){status('PDF, DOCX, TXT, MD 파일을 선택해 주세요.',true);return}
   const limit=ext==='pdf'?3_000_000:10_000_000;
   if(!file.size||file.size>limit){status(`파일은 0바이트보다 크고 ${ext==='pdf'?'3':'10'}MB 이하여야 합니다.`,true);return}
-  selected=file;result=null;$('results').hidden=true;$('text').value='';$('count').textContent='0자';$('filename').textContent=file.name;$('fileinfo').textContent=(file.size/1000).toFixed(1)+' KB · 분석 준비 완료';
+  window.reviewCommunity?.clear();selected=file;result=null;$('results').hidden=true;$('text').value='';$('count').textContent='0자';$('filename').textContent=file.name;$('fileinfo').textContent=(file.size/1000).toFixed(1)+' KB · 분석 준비 완료';
   if($('key').value.trim())analyze();else status('상단에 API 키를 입력한 뒤 분석 시작을 눌러 주세요.');
 }
 async function readReport(){
@@ -31,7 +31,7 @@ async function analyze(){
   lock(true);controller=new AbortController();let timedOut=false;const timer=setTimeout(()=>{timedOut=true;controller?.abort()},115000);$('analyze').textContent='분석 중…';$('results').hidden=true;status('보고서를 읽고 있습니다…');
   try{
     const report=await readReport();if(report.text?.length>120000)throw new Error('본문은 120,000자 이하로 나누어 분석하세요.');if(controller.signal.aborted)throw new DOMException('Aborted','AbortError');
-    status('Gemini가 맞춤법, 평가, 요약을 분석하고 있습니다…');const data=await callApi('/api/analyze',{apiKey,criteria,...report},controller.signal);result=data.result;render();status('분석이 완료되었습니다. 교정 제안과 평가를 확인하세요.');$('results').scrollIntoView({behavior:'smooth'});
+    status('Gemini가 맞춤법, 평가, 요약을 분석하고 있습니다…');const data=await callApi('/api/analyze',{apiKey,criteria,...report},controller.signal);result=data.result;render();window.reviewCommunity?.completed(data);status('분석이 완료되었습니다. 교정 제안과 평가를 확인하세요.');$('results').scrollIntoView({behavior:'smooth'});
   }catch(error){status(error.name==='AbortError'?(timedOut?'분석 시간이 초과되었습니다. 보고서를 나누어 다시 시도하세요.':'분석 대기를 취소했습니다. 이미 시작된 서버 작업은 잠시 계속될 수 있습니다.'):error.message,true)}
   finally{clearTimeout(timer);controller=null;lock(false);$('analyze').innerHTML='분석 시작 <span>↗</span>';}
 }
@@ -42,7 +42,7 @@ $('test-connection').onclick=async()=>{
 };
 $('show').onclick=()=>{const show=$('key').type==='password';$('key').type=show?'text':'password';$('show').textContent=show?'숨김':'표시'};
 $('text').oninput=()=>{$('count').textContent=$('text').value.length.toLocaleString()+'자'};
-$('clear').onclick=()=>{if(busy)return;selected=null;result=null;$('file').value='';$('text').value='';$('count').textContent='0자';$('filename').textContent='파일을 끌어 놓거나 선택하세요';$('fileinfo').textContent='보고서 한 개를 업로드하면 자동으로 분석합니다.';$('results').hidden=true;status('')};
+$('clear').onclick=()=>{if(busy)return;window.reviewCommunity?.clear();selected=null;result=null;$('file').value='';$('text').value='';$('count').textContent='0자';$('filename').textContent='파일을 끌어 놓거나 선택하세요';$('fileinfo').textContent='보고서 한 개를 업로드하면 자동으로 분석합니다.';$('results').hidden=true;status('')};
 $('file').onchange=e=>choose(e.target.files[0]);$('drop').onclick=e=>{if(busy)e.preventDefault()};$('drop').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(!busy)$('file').click()}};
 for(const name of ['dragenter','dragover'])$('drop').addEventListener(name,e=>{e.preventDefault();if(!busy)$('drop').classList.add('drag')});
 for(const name of ['dragleave','drop'])$('drop').addEventListener(name,e=>{e.preventDefault();$('drop').classList.remove('drag')});

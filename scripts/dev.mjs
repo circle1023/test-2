@@ -4,13 +4,14 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import analyze from '../api/analyze.js';
 import connection from '../api/connection.js';
+import community from '../api/community.js';
 import {MAX_BODY_BYTES,send} from '../lib/http.js';
 const root=path.resolve(fileURLToPath(new URL('../public/',import.meta.url)));
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://localhost');
     if(url.pathname.startsWith('/api/')){
-      const handler={'/api/analyze':analyze,'/api/connection':connection}[url.pathname];
+      const handler={'/api/analyze':analyze,'/api/connection':connection,'/api/community':community}[url.pathname];
       if(!handler)return send(res,404,{error:{message:'API를 찾지 못했습니다.'}});
       let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>MAX_BODY_BYTES){send(res,413,{error:{message:'요청 용량이 너무 큽니다.'}});return}chunks.push(chunk)}
       req.body=Buffer.concat(chunks).toString('utf8');return await handler(req,res);
