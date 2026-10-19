@@ -61,3 +61,14 @@ test('configuration diagnostics identify missing or wrong values without reveali
   assert(!JSON.stringify(res.body).includes('NOT_A_SERVER_KEY'));
   assert(!JSON.stringify(res.body).includes('short-secret'));
 });
+
+test('database transport errors are classified without leaking upstream details',async t=>{
+ setup(t);let kind='ENOTFOUND';t.mock.method(globalThis,'fetch',async()=>{throw Object.assign(new Error('private detail'),{cause:{code:kind}})});
+ let res=await invoke(null,{method:'GET'});assert.equal(res.body.error.code,'DB_DNS');
+ kind='UND_ERR_CONNECT_TIMEOUT';res=await invoke(null,{method:'GET'});assert.equal(res.body.error.code,'DB_TIMEOUT');
+ assert(!JSON.stringify(res.body).includes('private detail'));
+});
+test('server secret outer whitespace is removed before sending headers',async t=>{
+ setup(t);process.env.SUPABASE_SECRET_KEY='  sb_secret_TEST\n';t.mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.headers.apikey,'sb_secret_TEST');return ok([])});
+ assert.equal((await invoke(null,{method:'GET'})).statusCode,200);
+});
